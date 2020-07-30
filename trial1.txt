@@ -1,0 +1,28 @@
+name (if there), duration, effect, damage, x, y, width, height
+* none
+- 1
+* grounded
+- 120
+* wallLeft
+- 30
+* wallRight
+- 30
+* forwardAttack
+-:- 20 60 fire 100 0 0 100 40 20
+* downAttack
+-;;:-;:-:- 5 40 ground 10 55 35 10 10 40 ground 10 75 30 15 15 40 ground 10 95 10 60 80 11
+40 ground 10 55 35 10 10 40 ground 10 75 30 15 15 11 40 ground 10 55 35 10 10 30
+* airNeutral
+-::::-
+5
+15 fire 4000 10 0 150 40
+15 fire 4000 20 50 120 40
+15 fire 4000 30 40 110 40
+15 fire 4000 40 30 100 40
+5
+* crouch
+- 55
+* air
+- 10
+* clone
+- 30

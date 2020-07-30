@@ -1,0 +1,8 @@
+grounded 120
+wallLeft 30
+wallRight 30
+forwardAttack 20
+60 fire 20 10 10 100 40
+20
+air 10
+none 1

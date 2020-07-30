@@ -1,0 +1,15 @@
+1 0
+ty's_fav
+e 900 100 10 10
+e 900 300 10 10
+e 900 500 10 10
+e 850 900 10 10
+t -200 800 40 40
+t 150 800 40 40
+t 300 750 40 40
+t 600 700 15 15
+t 660 600 15 15
+t 740 550 15 15
+t 1000 350 350 10
+t 900 650 1000 100
+tb This is Ty's favorite level! It's also being used to test whether people freeze during 'cut scenes'. 1300 750 200 100

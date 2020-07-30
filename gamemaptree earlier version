@@ -1,0 +1,473 @@
+import java.awt.Color;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Scanner;
+import java.util.Set;
+
+//IMPORTANT!!!
+
+/* each file given must be a txt file (or some other text file idk how that works
+ * though) and the names and shit must be correct obviously but more importantly
+ * the beginning needs to follow the following format-
+ * 
+ * directions    (i.e. lruud for left, right, up, up, down)
+ * name		     (i.e. ty's house)
+ * then the rest of the junk or that shit will NOT COMPILE
+ */
+
+public class GameMapTree {
+	
+	private GameMap intial;
+	private ArrayList<ArrayList<ArrayList<Color>>> importedTextures;
+	
+	public GameMapTree(String[] levelNames, String[] textures, Handler handler) throws IOException{	
+		if (levelNames.length == 0 || textures.length == 0|| handler == null) {
+			throw new IllegalArgumentException();
+		}
+		importedTextures = new ArrayList<ArrayList<ArrayList<Color>>>();
+		for (int i = 0; i < textures.length; i++) {
+    		importedTextures.add(createList(Game.readFile(textures[i])));
+    	}
+		for (int i = 0; i < levelNames.length; i++) {
+			Scanner currScan = Game.readFile(levelNames[i]);
+			if (!currScan.hasNextLine()) {
+				throw new IllegalArgumentException();
+			}
+			String directions = currScan.next();
+			intial = insertLevel(intial, directions, currScan, handler);
+		}
+		intial.setup(new Playerv2(300, 400, 40, 40, handler));
+	}
+	
+	private static ArrayList<ArrayList<Color>> createList(Scanner s){
+       ArrayList<ArrayList<Color>> tem = new ArrayList<ArrayList<Color>>();
+       while (s.hasNextLine()){
+                  String temp = s.nextLine();
+                  Scanner lineCheck = new Scanner(temp);
+                  ArrayList<Color> tempList = new ArrayList<Color>();
+                  while (lineCheck.hasNextInt()) {
+                	  tempList.add(new Color(lineCheck.nextInt(), 
+	                		  lineCheck.nextInt(), lineCheck.nextInt()));
+                  }
+                  tem.add(tempList);
+                  lineCheck.close();
+       } 
+       s.close();
+       return tem;
+    }
+	
+	 private GameMap readLevel(Scanner s, Handler handler) throws IOException{
+	    	/* example of readable lines
+	    	 * e 100 400 20 20
+	    	 * t 800 350 40 20 (later put name of texture file here)
+	    	 * p 50 400 40 80 
+	    	 * tb all the words in the bubble can be put here 600 700 400 200
+	    	 */
+	    	Set<GameObject> gameq = new HashSet<>();
+	    	if (!s.hasNextLine()) {
+	    		throw new IllegalArgumentException();
+	    	}
+	    	String name = s.next();
+	    	System.out.println(name);
+	    	while(s.hasNextLine()) {
+	    		String type = s.next();
+	    		if(type.equals("e")) {
+	    			gameq.add(new BasicEnemy(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler));
+	    		}else if(type.equals("t")) {
+	    			gameq.add(new Tile(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler, importedTextures.get(0)));
+	    		}else if(type.equals("mt")) {
+	    			gameq.add(new MovingTile(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler, importedTextures.get(0)));
+	 			}else if(type.equals("st")) {
+	 				gameq.add(new switchTile(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler, importedTextures.get(0)));
+	    		}else if (type.contentEquals("B")) {
+	 				gameq.add(new Bee(s.nextInt(), s.nextInt(), handler));
+	 			}else if(type.equals("p")) {
+	 				//so think about removing these if they are constant
+	    			gameq.add(new Playerv2(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler));   			
+	    		}else if(type.equals("tb")) {
+	    			//assumes theres at least one word
+	    			String content = s.next();
+	    			while (!s.hasNextInt()) {
+	    				content = content + " " + s.next();
+	    			}
+	    			gameq.add(new TextBubble(content, s.nextInt(), s.nextInt(), ID.CutObject, s.nextInt(), s.nextInt(), 120));
+	    		} else if (type.contentEquals("QB")) {
+	    			gameq.add(new Queen(handler));
+	    		}
+	    			   	
+	    	}
+	    	s.close();
+	    	return new GameMap(name, gameq, handler);
+	    }
+	 
+	 private GameMap insertLevel(GameMap curr, String directions, Scanner s, Handler handler) throws IOException{
+		 if (directions.length() == 0 || curr == null) {
+			 return readLevel(s, handler);
+		 }
+		 switch(directions.charAt(0)) {
+         case 'l' :
+            curr.left = insertLevel(curr.left, directions.substring(1), s, handler);
+            curr.left.right = curr;
+            break;
+         case 'r' :
+        	 curr.right = insertLevel(curr.right, directions.substring(1), s, handler);
+        	 curr.right.left = curr;
+            break;
+         case 'u' :
+        	 curr.up = insertLevel(curr.up, directions.substring(1), s, handler);
+        	 curr.up.down = curr;
+            break;
+         case 'd' :
+        	 curr.down = insertLevel(curr.down, directions.substring(1), s, handler);
+        	 curr.down.up = curr;
+            break;
+         case 's' :
+        	 curr.secret = insertLevel(curr.secret, directions.substring(1), s, handler);
+        	 curr.secret.secret = curr;
+             break;
+         default :
+        	 System.out.println("There may have been a fuckey wucky @ GameTreeMap");
+            break;
+         }
+		 return curr;
+	 }
+	 
+	 public boolean goRight(Playerv2 curr) {
+		 if (intial.right == null) {
+			 return false;
+		 }else{
+			 intial.updateObjects(Game.getHandler().getMasterList());
+			 intial = intial.right;
+			 intial.setup(curr);
+			 return true;
+		 }
+	 }
+	 
+	 public boolean goLeft(Playerv2 curr) {
+		 if (intial.left == null) {
+			 return false;
+		 }else{
+			 intial.updateObjects(Game.getHandler().getMasterList());
+			 intial = intial.left;
+			 intial.setup(curr);
+			 return true;
+		 }
+	 }
+	 
+	 public boolean goUp(Playerv2 curr) {
+		 if (intial.up == null) {
+			 return false;
+		 }else{
+			 intial.updateObjects(Game.getHandler().getMasterList());
+			 intial = intial.up;
+			 intial.setup(curr);
+			 return true;
+		 }
+	 }
+	 
+	 public boolean goDown(Playerv2 curr) {
+		 if (intial.down == null) {
+			 return false;
+		 }else{
+			 intial.updateObjects(Game.getHandler().getMasterList());
+			 intial = intial.down;
+			 intial.setup(curr);
+			 return true;
+		 }
+	 }
+	 
+	 public boolean hasRight() {
+		 return intial.right != null;
+	 }
+	 
+	 public boolean hasLeft() {
+		 return intial.left != null;
+	 }
+	 
+	 public boolean hasUp() {
+		 return intial.up != null;
+	 }
+	 
+	 public boolean hasDown() {
+		 return intial.down != null;
+	 }
+	 
+	 //toString method
+	 public String toString() {
+		 return toStringHelp(intial);
+	 }
+	 
+	 private String toStringHelp(GameMap root) {
+		 if (root == null) {
+			 return "";
+		 }
+		 return root.toString();
+				 //+ toStringHelp(root.up) + toStringHelp(root.right) +
+				 //toStringHelp(root.down) + toStringHelp(root.left);
+	 }
+	 
+	 public String getLevel() {
+		 return intial.toString();
+	 }
+	 
+	 public String levelName() {
+		 return intial.levelName();
+	 }
+	 
+	 public boolean enterSecret(Playerv2 currPlayer) {
+		 if (intial.secret == null) {
+			 return false;
+		 }else{
+			 intial.updateObjects(Game.getHandler().getMasterList());
+			 intial = intial.secret;
+			 intial.setup(currPlayer);
+			 return true;
+		 }
+	 }
+	 
+	 //each GameMap
+	 private class GameMap {
+
+			GameMap left, right, up, down, secret;
+			private Set<GameObject> currObjects;
+			private Handler handler;
+			private String name;
+			private int position[] = {0, 0};
+			
+			public GameMap(String name, Set<GameObject> q, Handler handler) {
+				this.up = null;
+				this.down = null;
+				this.left = null;
+				this.right = null;
+				this.secret = null;
+				currObjects = q;
+				this.handler = handler;
+				this.name = name;
+			}
+			
+			public void setup(Playerv2 currPlayer) {
+				handler.clear();
+				handler.addObject(currPlayer);
+				for (GameObject g: currObjects) {
+					handler.addObject(g);
+				}
+			}
+			
+			public String levelName() {
+				return name;
+			}
+			
+			public String toString() {
+				int sides = 0;
+				if (left != null) {
+					sides++;
+				}
+				if (right != null) {
+					sides++;
+				}
+				if (up != null) {
+					sides++;
+				}
+				if (down != null) {
+					sides++;
+				}
+				return this.name + " has " + sides + " entrances/exits with "
+					   + currObjects.size() + " GameObjects.\n";
+			}
+			
+			public void updateObjects(LinkedList<GameObject> list) {
+				Set<GameObject> temp = new HashSet<>();
+				for (GameObject item: list) {
+					//next line is super important! it's what will stay when you leave
+					if (item.getID() == ID.MovingTile) {
+						((MovingTile)item).resetPos();
+					}
+					if (item.getID() != ID.Chakra && item.getID() != ID.Player) {
+						temp.add(item);
+					}
+				}
+				currObjects = temp;
+			}
+			
+			public int[] getPosition() {
+				return position;
+			}
+			
+		}
+
+}
+
+//********************NOW COLLISION CODE
+	private void collisionTile() {
+		boolean fellOffWall = false;
+		groundMoving = false;
+		int tempX = 1;
+		int tempY = 1;
+		int snapDistance = 5;
+		if ((isAttacking() && frameTimer == 0) && pStatus != STATUS.clone) {
+			setStatus(STATUS.none); //might lead to errors here
+		}
+		if (pStatus == STATUS.wallRight || pStatus == STATUS.wallLeft) {
+			fellOffWall = true;
+		}
+		/*
+		 * if ((!isAttacking() || frameTimer == 0) && pStatus != STATUS.clone) {
+			//setStatus(STATUS.none); //might lead to errors here
+		}
+		 */
+		for (int i = 0; i < handler.getMasterList().size(); i++) {
+			GameObject tempObject = handler.getMasterList().get(i);
+			if(tempObject.getID() == ID.Tile || tempObject.getID() == ID.MovingTile) {
+				Rectangle playerRectX = getOffsetBoundsX(); //maybe move these
+				Rectangle playerRectY = getOffsetBoundsY();
+				Rectangle otherRect =  new Rectangle(tempObject.getX(), tempObject.getY(),
+						tempObject.getWidth(), tempObject.getHeight());
+				if (playerRectY.intersects(otherRect)) {
+					tempY = 0;
+					int yTarget = tempObject.getY();
+					if (y < yTarget - 1) {
+						y = yTarget - height - 1;
+						if (!isAttacking() || pStatus == STATUS.airNeutral) {
+							setStatus(STATUS.grounded);
+							if (tempObject.getID() == ID.MovingTile) {
+								//right now theres a weird swaying motion, this will stop up/down but not side to side
+								y = tempObject.getY() - height;
+								groundMoving = true;
+							}
+							if (lastKeyDown == 's' && Game.keyPressed) {
+								xv = 0;
+							}
+						}
+						if(pStatus == STATUS.grounded && !Game.keyPressed && Game.gameTime % 5 == 0) {
+							xv = xv * 3 / 4;
+						}else if(pStatus == STATUS.clone && Game.gameTime % 5 == 0) {
+							xv = xv * 3 / 4;
+						}
+						onGround = true;
+					}else {
+						y = yTarget + tempObject.getHeight();
+						yv = 2;
+						jumpTimer = 0;
+					}
+					((Tile)tempObject).touched(this);
+				}else if (playerRectX.intersects(otherRect)) {
+					tempX = 0;
+					int xTarget = tempObject.getX();
+					if (x < xTarget - snapDistance) {
+						x = xTarget - width;
+						if (actionable && pStatus != STATUS.grounded && pStatus != STATUS.clone) {
+							setStatus(STATUS.wallRight);
+							faceRight = false;
+							fellOffWall = false;
+						}
+						if (tempObject instanceof Switch) {
+							x += 2; //arbitary distance to get closer to center of switch
+							y = tempObject.getY() - height;
+						}
+					}else if(x > xTarget - snapDistance + tempObject.getWidth()){
+						x = xTarget + tempObject.getWidth();
+						if (actionable && pStatus != STATUS.grounded && pStatus != STATUS.clone) {
+							setStatus(STATUS.wallLeft);
+							faceRight = true;
+							fellOffWall = false;
+						}
+						if (tempObject instanceof Switch) {
+							x -= 2; //arbitary distance to get closer to center of switch
+							y = tempObject.getY() - height;
+						}
+					}
+					((Tile)tempObject).touched(this);
+				}
+				if (tempObject.getID() == ID.MovingTile) {
+					MovingTile tempTile = (MovingTile)tempObject;
+					if (tempTile.getX() + tempTile.getXV() < x + xv + width &&
+						tempTile.getX() + tempTile.getXV() + tempTile.getWidth() > x + xv &&
+						tempTile.getY() + tempTile.getYV() < y + yv + height &&
+						tempTile.getY() + tempTile.getYV() + tempTile.getHeight() > y + yv) {
+						x += ((MovingTile)tempObject).getXV();
+						if (isAttacking()) {
+							xv = 0;
+						}
+					}
+				}
+				
+			}else if(tempObject.getID() == ID.Chakra) {
+				if (collides(((Chakra)tempObject), getBounds())){
+					if (HUD.HEALTH != HUD.FULL_HEALTH) {
+						int amount = ((Chakra)tempObject).getWidth();
+						HUD.HEALTH += amount;
+						handler.removeObject(tempObject);
+					}
+				}
+			}else if(tempObject.getID() == ID.Bomb) {
+				if (collides(((Bomb)tempObject), getBounds())){
+					if ((this instanceof Clone)) {
+						((Clone)this).die();
+					}else {
+						HUD.HEALTH -= 10;
+						iTimer = 20;
+						setActionable(false);
+						//frameTimer = 0;
+						int knockback = 6;
+						if (x + width / 2 < tempObject.getX() + tempObject.getWidth() / 2) {
+							xv = -knockback;
+						}else {
+							xv = knockback;
+						}
+						if (y + height / 2 < tempObject.getY() + tempObject.getHeight() / 2) {
+							yv = knockback + 1;
+						}else {
+							yv= -knockback + 2;
+						}
+						setStatus(STATUS.air);
+					}
+					((Bomb)tempObject).explode();
+				}
+			}else if(tempObject.getID() == ID.NoCloneZone) {
+				if (this instanceof Clone) {
+					if (getOffsetBoundsX().intersects(((NoCloneZone)tempObject).getBounds())) {
+						((Clone)this).die();
+					}else if(getOffsetBoundsY().intersects(((NoCloneZone)tempObject).getBounds())){
+						((Clone)this).die();
+					}
+				}
+			}
+		}
+		/*
+		 * if (pStatus != STATUS.wallLeft && pStatus != STATUS.wallRight && jumpTimer <= 0 
+				&& (lastStatus == STATUS.wallLeft ||lastStatus == STATUS.wallRight)) {
+			if (yv > 0) {
+				if (lastStatus == STATUS.wallLeft) {
+					xv = 1;
+				}else {
+					xv = 1;
+				}
+			}else {
+				xv = 0;
+			}
+			//pretty sure you can replace tempx and y with something with this
+		}
+		 */
+		if (fellOffWall && (pStatus != STATUS.wallLeft || pStatus != STATUS.wallRight)) {
+			if (yv < 0) {
+				if (lastStatus == STATUS.wallLeft) {
+					xv = -1;
+				}else {
+					xv = 1;
+				}
+			}else {
+				xv = 0;
+			}
+		}
+		if (pStatus == STATUS.none || fellOffWall || (lastStatus == STATUS.grounded && !onGround)) {
+			//setStatus(STATUS.air);
+		}
+		onGround = false;
+		if (pStatus != STATUS.wallRight && pStatus != STATUS.wallLeft && (faceRight && xv < 0 || !faceRight && xv > 0)) {
+			faceRight = !faceRight;
+		}
+		x += xv * tempX;
+		y += yv * tempY;
+	}
