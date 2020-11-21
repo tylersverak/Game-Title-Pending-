@@ -1,0 +1,5 @@
+go to this directory (cd desktop/Game-Title-Pending-)
+git status - to see whats up
+git add . - adds all to be pushed but can put file name instead of dot
+git commit - gets it on your machine
+git push - sends it to website and takes a second
