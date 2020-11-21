@@ -6,6 +6,7 @@ public enum STATUS {
 	wallRight,
 	forwardAttack,
 	downAttack,
+	dashAttack,
 	airNeutral,
 	crouch,
 	clone,

@@ -8,8 +8,8 @@ public class Run implements Runnable{
 	private Source runner;
 	
 	public Run() throws IOException {
-		//runner = new TitleScreen("Title", this);
-		runner = new Game(this);
+		runner = new TitleScreen("Title", this);
+		//runner = new Game(this);
 		start();
 	}
 	

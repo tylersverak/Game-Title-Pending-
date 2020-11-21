@@ -11,7 +11,7 @@ public class MovingTile2 extends Tile{
 	//think about it crunching the player or other stuff
 	//maybe iteract with being damaged?
 	
-	public MovingTile2(int movementStyle, int x, int y, int width, int height, Handler handler, ArrayList<ArrayList<Color>> map) {
+	public MovingTile2(int movementStyle, int x, int y, int width, int height, Handler handler, Color map[][]) {
 		super(x, y, width, height, handler, map);
 		this.movementStyle = movementStyle;
 		xv = 0;

@@ -18,9 +18,8 @@ public class TitleScreen extends Source{
 	@Override
 	public void tick() {
 		// TODO Auto-generated method stub
-		color++;
 	}
-
+	
 	@Override
 	public void render() {
 		BufferStrategy bs = this.getBufferStrategy();
@@ -28,10 +27,15 @@ public class TitleScreen extends Source{
 			this.createBufferStrategy(3);
 			return;
 		}
+		
 		Graphics g = bs.getDrawGraphics();
-		g.setColor(new Color(color % 255, 0, 0));
+		g.setColor(new Color(95,5,25));
+		g.fillRect(0,0,WIDTH,HEIGHT);
+		
 		g.setFont(new Font("Dialog", Font.PLAIN, 100));
+		g.setColor(new Color(10, 255, 255));
 		g.drawString("Oh wow cool a game", 500, 600);
+		
 		g.dispose();
 		bs.show();
 	}

@@ -9,7 +9,7 @@ public class MovingTile extends Tile{
 	protected Playerv2 target;
 	//use this to pick the way the tile moves
 	
-	public MovingTile(int movementStyle, int x, int y, int width, int height, Handler handler, ArrayList<ArrayList<Color>> map) {
+	public MovingTile(int movementStyle, int x, int y, int width, int height, Handler handler, Color map[][]) {
 		super(x, y, width, height, handler, map);
 		this.movementStyle = movementStyle;
 		xv = 0;

@@ -5,8 +5,7 @@ public class ActivateMoveTile extends MovingTile implements Comparable<GameObjec
 
 	private int timer;
 	
-	public ActivateMoveTile(int movementStyle, int x, int y, int width, int height, Handler handler,
-			ArrayList<ArrayList<Color>> map) {
+	public ActivateMoveTile(int movementStyle, int x, int y, int width, int height, Handler handler, Color map[][]) {
 		super(movementStyle, x, y, width, height, handler, map);
 		timer = 0;
 	}

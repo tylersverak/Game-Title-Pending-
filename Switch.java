@@ -15,7 +15,7 @@ public class Switch extends Tile implements Comparable<GameObject> {
 		selfTimer = 0;
 		activated = false;
 		this.control = control;
-		control.setActivated(true); //change to false later
+		control.setActivated(false);
 	}
 
 	@Override
@@ -69,6 +69,10 @@ public class Switch extends Tile implements Comparable<GameObject> {
 	private void deactivateAll() {
 		this.activated = false;
 		control.deactivate();
+	}
+	
+	public Rectangle getBounds() {
+		return new Rectangle(x, y, getWidth(), getHeight());
 	}
 	
 	public int compareTo(GameObject other) {

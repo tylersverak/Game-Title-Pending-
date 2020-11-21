@@ -107,8 +107,7 @@ public class Queen extends Enemy{
 	
 	private void movement2() {
 		if (phase == null || phase == MOVEMENT.idle) {
-			//phase = patterns[Game.rand.nextInt(patterns.length - 2) + 1];
-			phase = MOVEMENT.bomb; //delete this line to actually cycle
+			phase = patterns[Game.rand.nextInt(patterns.length - 2) + 1];
 		}else {
 			if (phase == MOVEMENT.bomb) {
 				int bombtimer = 700;

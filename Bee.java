@@ -31,6 +31,7 @@ public class Bee extends Enemy{
 		target = null;
 		speed = 5;
 		imageSetup();
+		health = 20;
 	}
 	
 	private void imageSetup() {

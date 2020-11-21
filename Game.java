@@ -1,10 +1,11 @@
-//version 1.8.7
+//version 1.9.1
 
 /*
  * to-do~
  * 1. sprites
  * 2. balance clone/mana/dying system
- * 
+ * 3. rework all the jumping stuff/ add element using clones
+ * 4. maybe have just one clone, cost chakra to have it out, but allow you to switch between the two
  */
 import java.awt.Canvas;
 import java.awt.Color;
@@ -30,11 +31,11 @@ public class Game extends Source{
 	private static final long serialVersionUID = 1902147405213257243L;
 	private Run r;
 	public static Random rand = new Random();
-	private static final String[] textures = {"patsdino.txt"}, 
-			levels = {"level.txt", "weird floor and wall.txt", "airship.txt", "skyfield.txt", "level3.txt","basement.txt","treasure.txt","junglegym.txt"};
+	private static final String[] textures = { "patsdino.txt", "brain_pat.txt", "goo.txt", "platform_grey.txt", "robot.txt", "block.txt", "ocean_spiral.txt"}, 
+			levels = {"levelremake", "weird floor and wall.txt", "airship.txt", "skyfield2", "level3.txt","basement.txt","treasure.txt","junglegym.txt"};
 	public final static boolean debugMode = true;
 	public final static String gameTitle = "sample"; //lol
-	public static final int roomStartX = 1, roomStartY = 3;
+	public static final int roomStartX = 2, roomStartY = 2;
 	
 	//updated with the game
 	public static int gameTime, gameSpeed;
@@ -43,6 +44,7 @@ public class Game extends Source{
 	private HUD hud;
 	public static GameMapTree masterMap;
 	public static Map<ID, Integer> priorityList;
+	private static int order = 0;
 	
 	
 	public Game(Run masterRun) throws IOException{
@@ -116,6 +118,10 @@ public class Game extends Source{
 		}else {
 			return var;
 		}
+	}
+	
+	public static int getNextOrder(){
+		return ++order;
 	}
 	
 	//same as above but with doubles

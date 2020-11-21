@@ -19,7 +19,7 @@ import java.util.Set;
 
 public class GameMapTree {
 	
-	private ArrayList<ArrayList<ArrayList<Color>>> importedTextures;
+	private Color[][][] importedTextures;
 	private GameMap[][] grandMap;
 	private final int mapSize = 5;
 	//private int roomX = mapSize / 2, roomY = mapSize / 2; //dictates where the player starts
@@ -32,10 +32,22 @@ public class GameMapTree {
 		if (levelNames.length == 0 || textures.length == 0|| handler == null) {
 			throw new IllegalArgumentException();
 		}
-		importedTextures = new ArrayList<ArrayList<ArrayList<Color>>>();
+		ArrayList<ArrayList<ArrayList<Color>>>newtextures = new ArrayList<ArrayList<ArrayList<Color>>>();
 		for (int i = 0; i < textures.length; i++) {
-    		importedTextures.add(createList(Game.readFile(textures[i])));
+    		newtextures.add(createList(Game.readFile(textures[i])));
     	}
+		importedTextures = new Color[newtextures.size()][][];
+		for (int i = 0; i < newtextures.size(); i++){
+			Color temp[][] = new Color[newtextures.get(i).size()][];
+			for (int j = 0; j < newtextures.get(i).size(); j++){
+				Color insidetemp[] = new Color[newtextures.get(i).get(j).size()];
+				for (int k = 0; k < newtextures.get(i).get(j).size(); k++){
+					insidetemp[k]= newtextures.get(i).get(j).get(k);
+				}
+				temp[j] = insidetemp;
+			}
+			importedTextures[i] = temp;
+		}
 		for (int i = 0; i < levelNames.length; i++) {
 			Scanner currScan = Game.readFile(levelNames[i]);
 			if (!currScan.hasNextLine()) {
@@ -80,6 +92,7 @@ public class GameMapTree {
 	    	 * tb all the words in the bubble can be put here 600 700 400 200
 	    	 */
 		 	Tile lastTile = null;
+		 	int tileSkin = 0;
 	    	Set<GameObject> gameq = new HashSet<>();
 	    	if (!s.hasNextLine()) {
 	    		throw new IllegalArgumentException();
@@ -90,19 +103,31 @@ public class GameMapTree {
 	    		String type = s.next();
 	    		if(type.equals("e")) {
 	    			gameq.add(new BasicEnemy(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler));
+	    		}else if(type.equals("tt")) { //scaled tile
+	    			lastTile = new ScaledTile(s.nextInt(), s.nextInt(), s.nextInt(), handler, importedTextures[tileSkin]);
+	    			gameq.add(lastTile);
+	    		}else if(type.equals("ttc")) { //changed
+	    			ScaledTile current = new ScaledTile(s.nextInt(), s.nextInt(), s.nextInt(), handler, importedTextures[tileSkin]);
+	    			// horizontal expansion, vertical expansion, 0 for no rotation or any other number for rotation
+	    			current.extend(s.nextInt(), s.nextInt());
+	    			if (s.nextInt() != 0){
+	    				current.rotate();
+	    			}
+	    			lastTile = (Tile)current;
+	    			gameq.add(lastTile);
 	    		}else if(type.equals("t")) {
-	    			lastTile = new Tile(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler, importedTextures.get(0));
+	    			lastTile = new Tile(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler, importedTextures[tileSkin]);
 	    			gameq.add(lastTile);
 	    		}else if(type.equals("mt")) {
-	    			lastTile = new MovingTile(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler, importedTextures.get(0));
+	    			lastTile = new MovingTile(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler, importedTextures[tileSkin]);
 	    			gameq.add(lastTile);
 	 			}else if(type.equals("jt")) {
-	 				gameq.add(new JumpTile(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler, importedTextures.get(0)));
+	 				gameq.add(new JumpTile(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler, importedTextures[tileSkin]));
 	 			}else if(type.equals("st")) {
-	 				gameq.add(new switchTile(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler, importedTextures.get(0)));
+	 				gameq.add(new switchTile(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler, importedTextures[tileSkin]));
 	 			}else if(type.equals("s")) {
 	 				gameq.add(new Switch(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler, lastTile));
-	    		}else if (type.contentEquals("B")) {
+	    		}else if (type.equals("B")) {
 	 				gameq.add(new Bee(s.nextInt(), s.nextInt(), handler));
 	 			}else if(type.equals("p")) {
 	 				//so think about removing these if they are constant
@@ -110,15 +135,17 @@ public class GameMapTree {
 	    		}else if(type.contentEquals("ncz")) {
 	    			gameq.add(new NoCloneZone(s.nextInt(), s.nextInt(), s.nextInt()));
 	    		}else if(type.contentEquals("amt")) {
-	    			lastTile = new ActivateMoveTile(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler, importedTextures.get(0));
+	    			lastTile = new ActivateMoveTile(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler, importedTextures[tileSkin]);
 	    			gameq.add(lastTile);
+	    		}else if(type.contentEquals("tilechange")) {
+	    			tileSkin = Game.clamp(s.nextInt(), 0, importedTextures.length - 1);
 	    		}else if(type.equals("tb")) {
 	    			//assumes theres at least one word
 	    			String content = s.next();
 	    			while (!s.hasNextInt()) {
 	    				content = content + " " + s.next();
 	    			}
-	    			gameq.add(new TextBubble(content, s.nextInt(), s.nextInt(), ID.CutObject, s.nextInt(), s.nextInt(), 120));
+	    			gameq.add(new TextBubble(content, s.nextInt(), s.nextInt(), ID.CutObject, s.nextInt(), s.nextInt(), 1000));
 	    		} else if (type.contentEquals("QB")) {
 	    			gameq.add(new Queen(handler));
 	    		}

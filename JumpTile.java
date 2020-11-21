@@ -5,7 +5,7 @@ import java.util.ArrayList;
 
 public class JumpTile extends Tile{
 	
-	public JumpTile(int x, int y, int width, int height, Handler handler, ArrayList<ArrayList<Color>> map) {
+	public JumpTile(int x, int y, int width, int height, Handler handler, Color map[][]) {
 		super(x, y, width, height, handler, map);
 	}
 	
@@ -25,9 +25,13 @@ public class JumpTile extends Tile{
 	}
 	
 	public void touched(Playerv2 p) {
-		if (p.getY() + p.getHeight() < this.y) {
-			p.setYV(-40);
+		if (p.getY() + p.getHeight() <= this.y) {
+			p.setY(p.getY() - 1);
+			p.setYV(-20);
+			System.out.println(p.getY() + p.getHeight() + " " + this.y);
+			System.out.println(p.getY() + p.getHeight() <= this.y);
 		}
+		
 	}
 	
 	public int getWidth() {

@@ -16,10 +16,9 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 	
 	//clean this up cause protected
 	private int iTimer, jumpTimer, lastTimePressed, lastTimeUp;
-	protected int frameTimer, xv, yv;
+	protected int frameTimer, xv, yv, pyv;
 	private char lastKeyDown;
 	private final static int speed = 7, gravity = 7, timer = 27, keyBuffer = 10;
-	public static final String attackFile = "player_attacks";
 	protected Handler handler;
 	protected STATUS pStatus;
 	protected STATUS lastStatus;
@@ -165,7 +164,7 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 			if (x > Game.WIDTH - width || x < 0) {
 				handler.removeObject(this);
 			}
-			if (y > Game.HEIGHT - height || y < 0) {
+			if (y > Game.HEIGHT - height || y < -20) {
 				handler.removeObject(this);
 			}
 		}
@@ -282,6 +281,7 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 		anchor = null;
 		
 		LinkedList<GameObject> objectList = handler.getMasterList();
+		int noclingspeed = 3; //velocity at which the player will not stick to a wall if moving that much away
 		for (int i = 0; i < objectList.size(); i++) {
 			GameObject tempObject = objectList.get(i);
 			if ((tempObject.getID() == ID.Tile || tempObject.getID() == ID.MovingTile) && getOffset().intersects(tempObject.getBounds())) {
@@ -297,7 +297,6 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 					//GROUNDED
 					y = tempObject.getY() - height;
 					onGround = true;
-					yv = 0;
 					//key stuff
 					if (lastKeyDown == 's' && Game.keyPressed) {
 						xv = 0;
@@ -310,6 +309,7 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 					if (tempObject instanceof MovingTile) {
 						anchor = (MovingTile)tempObject;
 					}
+					yv = 0;
 				}else if(output == Math.abs(bottom)) {
 					//BUMP
 					y = tempObject.getY() + tempObject.getHeight();
@@ -317,14 +317,26 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 					jumpTimer = 0;
 				}else if (Math.abs(left) == output) {
 					// WALL ON RIGHT SIDE
-					x = tempObject.getX() - width;
-					rightWall = true;
-					xv = 1;
+					if (xv > -noclingspeed){
+						x = tempObject.getX() - width;
+						rightWall = true;
+						if (iTimer > 0){
+							xv = -xv;
+						}else{
+							xv = 1;
+						}
+					}
 				}else if(output == Math.abs(right)) {
 					//WALL ON LEFT SIDE
-					x = tempObject.getX() + tempObject.getWidth();
-					leftWall = true;
-					xv = -1;
+					if (xv < noclingspeed){
+						x = tempObject.getX() + tempObject.getWidth();
+						leftWall = true;
+						if (iTimer > 0){
+							xv = -xv;
+						}else{
+							xv = -1;
+						}
+					}
 				}
 
 				if (anchor != null && false) { //might delete this later
@@ -365,11 +377,17 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 			}
 		}
 		if (walled(pStatus) && !leftWall && !rightWall) {
-			if (yv > 0) {
+			if (pyv > 0){
 				xv = 0;
+				if (pStatus == STATUS.wallLeft){
+					x++;
+				}else if(pStatus == STATUS.wallRight){
+					x--;
+				}
 			}
 		}
-		if (!isAttacking() || frameTimer == 0 && pStatus != STATUS.clone  || pStatus == STATUS.airNeutral && (onGround || rightWall || leftWall)) {
+		if (!isAttacking() || frameTimer == 0 && pStatus != STATUS.clone  || pStatus == STATUS.airNeutral && (onGround || rightWall || leftWall)
+				|| pStatus == STATUS.dashAttack && (!onGround || rightWall || leftWall)) {
 			if (onGround) {
 				setStatus(STATUS.grounded);
 			}else if (rightWall) {
@@ -397,11 +415,13 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 			faceRight = !faceRight;
 		}
 		y += yv;
-		if (!leftWall && !rightWall) {
-			x += xv;
-		}else {
+		//x += xv;
+		if (leftWall || rightWall){
 			faceRight = leftWall; //makes them look the right way
+		}else{
+			x += xv;
 		}
+		pyv = yv;
 	}
 	
 	private boolean collisionCompare(int number, int compare1, int compare2, int compare3) {
@@ -533,7 +553,7 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 				}
 			}
 		}
-		if (walled(pStatus) && !rightWall && !leftWall) {
+		if (walled(lastStatus) && !rightWall && !leftWall) {
 			if (yv >= 0) {
 				xv = 0;
 			}else {
@@ -747,14 +767,20 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 		}else if (key == 'j' || key =='J') {
 			if (!isAttacking() && pStatus != STATUS.wallLeft && pStatus != STATUS.wallRight) {
 				if (pStatus == STATUS.grounded) {
-					if (lastKeyDown != 's') {
-						setStatus(STATUS.forwardAttack);
-					}else {
+					if (xv > 3 || xv < -3){
+						setStatus(STATUS.dashAttack);
+					}else if (lastKeyDown == 's') {
 						setStatus(STATUS.downAttack);
+						if (!groundMoving) {
+							xv = 0;
+						}
+					}else{
+						setStatus(STATUS.forwardAttack);
+						if (!groundMoving) {
+							xv = 0;
+						}
 					}
-					if (!groundMoving) {
-						xv = 0;
-					}
+					
 				}else {
 					setStatus(STATUS.airNeutral);
 				}
@@ -849,7 +875,7 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 	//add other status later
 	public boolean isAttacking() {
 		//need a set of all status
-		if (pStatus == STATUS.forwardAttack || pStatus ==STATUS.downAttack || pStatus == STATUS.airNeutral) {
+		if (pStatus == STATUS.forwardAttack || pStatus ==STATUS.downAttack || pStatus == STATUS.airNeutral || pStatus == STATUS.dashAttack) {
 			return true;
 		}else {
 			//think about this

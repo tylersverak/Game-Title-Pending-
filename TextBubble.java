@@ -9,7 +9,7 @@ import java.util.Scanner;
 public class TextBubble extends GameObject implements Comparable<GameObject>{
 	
 	private String toPrint;
-	private static final int lineSpeed = 20;
+	private static final int lineSpeed = 6;
 	private int index, lineLength, timer;
 	private Queue<String> wordQueue;
 	private String[] displayedWords;
@@ -68,9 +68,8 @@ public class TextBubble extends GameObject implements Comparable<GameObject>{
 				updateWordDisplay(toPrint, index, displayedWords);
 				index++;
 			}
-		}else{
-			timer--;
 		}
+		timer--;
 	}
 	
 	//intializes the wordQueue object, used only internally

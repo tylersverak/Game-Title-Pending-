@@ -6,15 +6,17 @@ import java.util.ArrayList;
 public class Tile extends GameObject implements Comparable<GameObject>{
 	
 	Handler handler;
-	private ArrayList<ArrayList<Color>> map;
+	protected Color skin[][];
 	protected boolean touched;
 	protected boolean activated;
+	protected int order;
 	
-	public Tile(int x, int y, int width, int height, Handler handler, ArrayList<ArrayList<Color>> map) {
+	public Tile(int x, int y, int width, int height, Handler handler, Color skin[][]) {
 		super(x, y, ID.Tile, width, height);
 		this.handler = handler;
-		this.map = map;
+		this.skin = skin;
 		activated = true;
+		order = Game.getNextOrder();
 	}
 
 	public void tick() {
@@ -24,13 +26,17 @@ public class Tile extends GameObject implements Comparable<GameObject>{
 	public void render(Graphics g) {
 		if (Game.debugMode) {
 			g.setColor(Color.BLUE);
+			if (!activated){
+				g.setColor(new Color(200, 50, 50));
+			}
 			g.fillRect(x, y, getWidth(), getHeight());
 			g.setColor(Color.WHITE);
 			g.drawString("x: " + x + "y: " + y, x + 5, y + 20);
-		}else {
-			for(int i = 0; i < map.size(); i++) {
-				for(int j = 0; j < map.get(i).size(); j++) {
-					g.setColor(map.get(i).get(j));
+			g.drawString("w: " + width + "h: " + height, x + 5, y + 40);
+		}else if (activated){
+			for(int i = 0; i < skin.length; i++) {
+				for(int j = 0; j < skin[i].length; j++) {
+					g.setColor(skin[i][j]);
 					g.fillRect(x + width*i, y + height*j, width, height);
 				}
 			}
@@ -38,15 +44,18 @@ public class Tile extends GameObject implements Comparable<GameObject>{
 	}
 	
 	public Rectangle getBounds() {
+		if (!activated){
+			return new Rectangle(-90, 0, 0, 0);
+		}
 		return new Rectangle(x, y, getWidth(), getHeight());
 	}
 	
 	public int getHeight() {
-		return map.size() * height;
+		return skin[0].length * height;
 	}
 	
 	public int getWidth() {
-		return map.get(0).size() * width;
+		return skin.length * width;
 	}
 	
 	public void touched(Playerv2 player) {
@@ -61,8 +70,12 @@ public class Tile extends GameObject implements Comparable<GameObject>{
 		this.activated = activated;
 	}
 	
+	public int getOrder(){
+		return order;
+	}
+	
 	public void deactivate() {
-		//default to nothing
+		activated = false;
 	}
 	
 	public int compareTo(GameObject other) {
@@ -70,10 +83,7 @@ public class Tile extends GameObject implements Comparable<GameObject>{
 			return -1;
 		}
 		if (other.getID() == ID.Tile) {
-			if (other.getX() == x) {
-				return other.getY() - y;
-			}
-			return other.getX() - x;
+			return ((Tile)other).getOrder() - this.getOrder();
 		}
 		return super.compareTo(other);
 	}

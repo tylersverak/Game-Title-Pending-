@@ -3,7 +3,10 @@ import java.util.ArrayList;
 
 public class switchTile extends Tile implements Comparable<GameObject>{
 
-	public switchTile(int x, int y, int width, int height, Handler handler, ArrayList<ArrayList<Color>> map) {
+	
+	//NOT USED
+	
+	public switchTile(int x, int y, int width, int height, Handler handler, Color map[][]) {
 		super(x, y, width, height, handler, map);
 	}
 	

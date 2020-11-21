@@ -1,0 +1,23 @@
+0 0
+this_level
+t 0 100 20 20
+t 0 0 20 20
+t 150 100 20 20
+t 450 100 20 20
+t 300 100 20 20
+e 1350 400 30 30
+e 250 590 50 50
+wc cw 1250 350 10 10
+wc ncw 1350 450 15 5
+tilechange 1
+ttc -100 650 30 0 0 0
+tilechange 5
+t 700 70 10 10
+t 700 350 10 10
+t 1350 370 20 20
+t 1350 50 20 20
+tilechange 3
+ttc 1000 250 20 20 0 1
+ttc 1350 800 10 50 20 0
+ttc 700 650 10 10 0 0
+tb Welcome to my game! But now it's even better. Use WSAD to move, K to attack, and J to clone yourself! Play around with it and wander around. 300 300 200 100
