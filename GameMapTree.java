@@ -61,7 +61,7 @@ public class GameMapTree {
 			grandMap[xoffset][yoffset] = readLevel(currScan, handler);
 		}
 		PrintAll();
-		grandMap[roomX][roomY].setup(new Playerv2(300, 400, 40, 40, handler));
+		grandMap[roomX][roomY].setup(new Playerv2(300, 400, handler));
 		this.handler = handler;
 		this.g = g;
 	}
@@ -131,7 +131,7 @@ public class GameMapTree {
 	 				gameq.add(new Bee(s.nextInt(), s.nextInt(), handler));
 	 			}else if(type.equals("p")) {
 	 				//so think about removing these if they are constant
-	    			gameq.add(new Playerv2(s.nextInt(), s.nextInt(), s.nextInt(), s.nextInt(), handler));   			
+	    			gameq.add(new Playerv2(s.nextInt(), s.nextInt(), handler));   			
 	    		}else if(type.contentEquals("ncz")) {
 	    			gameq.add(new NoCloneZone(s.nextInt(), s.nextInt(), s.nextInt()));
 	    		}else if(type.contentEquals("amt")) {

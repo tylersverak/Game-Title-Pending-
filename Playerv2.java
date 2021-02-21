@@ -15,20 +15,19 @@ import java.util.Scanner;
 public class Playerv2 extends GameObject implements Comparable<GameObject>{
 	
 	//clean this up cause protected
-	private int iTimer, jumpTimer, lastTimePressed, lastTimeUp;
-	protected int frameTimer, xv, yv, pyv;
+	protected int iTimer, jumpTimer, lastTimePressed, lastTimeUp, frameTimer, xv, yv, pyv;
 	private char lastKeyDown;
-	private final static int speed = 7, gravity = 7, timer = 27, keyBuffer = 10;
+	private final static int speed = 7, gravity = 7, timer = 27, keyBuffer = 10, defaultJumpHeight = 25; //timer is actually jump height, defaultjumpheight is for walljumps
 	protected Handler handler;
 	protected STATUS pStatus;
 	protected STATUS lastStatus;
 	protected static Map<STATUS, Attack> attackData;
-	protected boolean faceRight = true;
-	protected boolean groundMoving = false, actionable = true;
-	protected final static int cloneValue = 10;
+	private Clone buddy;
+	protected boolean groundMoving = false, actionable = true, faceRight = true;
+	protected final int cloneValue = 10; //how much juice it takes to make a clone
 	protected MovingTile anchor;
 	
-	public Playerv2 (int x, int y, int width, int height, Handler handler) throws FileNotFoundException{
+	public Playerv2 (int x, int y, Handler handler) throws FileNotFoundException{
 		//last two are width then height but im gonna edit it
 		//not certain but assuming x,y is upper left corner
 		super(x, y, ID.Player, 15, 30);
@@ -38,22 +37,6 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 		pStatus = STATUS.air;
 		attackData = setupAttacks2();
 		anchor = null;
-	}
-	
-	public Rectangle getBounds() {
-		return new Rectangle(x, y, width, height);
-	}
-	
-	public Rectangle getOffsetBoundsY() {
-		return new Rectangle(x, y + yv , width, height);
-	}
-	
-	public Rectangle getOffsetBoundsX() {
-		return new Rectangle(x + xv, y, width, height);
-	}
-	
-	public Rectangle getOffset() {
-		return new Rectangle(x + xv, y + yv, width, height);
 	}
 	
 	public void tick() {
@@ -80,10 +63,19 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 	}
 	
 	public void setStatus(STATUS s) {
+		if (this instanceof Clone && s == STATUS.clone){
+			return;
+		}
 		if (pStatus != s || pStatus == STATUS.none) {
 			if (s != STATUS.none) {
 				frameTimer = attackData.get(pStatus).getTimer();
 			}
+			pStatus = s;
+		}
+	}
+	
+	protected void setStatusOverride(STATUS s){
+		if (pStatus != STATUS.clone){
 			pStatus = s;
 		}
 	}
@@ -110,6 +102,7 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 		lastStatus = pStatus;
 	}
 	
+	//collision methods**********************************************************************************************************************************************************************
 	private void checkEdges() {
 		//edges
 		if (!(this instanceof Clone)) {
@@ -120,6 +113,7 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 					x = -width;
 					if(Game.masterMap.goRight(this)) {
 						System.out.println("sucessR" + xv + " " + x);
+						handler.recallClones();
 					}else {
 						System.out.println("fucking crap damn it");
 					}
@@ -132,6 +126,7 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 					//need to prune this later, dont need the return
 					if(Game.masterMap.goLeft(this)) {
 						System.out.println("sucessL" + xv + " " + x);
+						handler.recallClones();
 					}else {
 						System.out.println("fucking crap damn it");
 					}
@@ -144,6 +139,7 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 					y = -height;
 					if(Game.masterMap.goDown(this)) {
 						System.out.println("sucessD");
+						handler.recallClones();
 					}else {
 						System.out.println("fucking crap damn it");
 					}
@@ -155,6 +151,7 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 					y = Game.HEIGHT + height;
 					if(Game.masterMap.goUp(this)) {
 						System.out.println("sucessU");
+						handler.recallClones();
 					}else {
 						System.out.println("fucking crap damn it");
 					}
@@ -163,13 +160,16 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 		}else {
 			if (x > Game.WIDTH - width || x < 0) {
 				handler.removeObject(this);
+				handler.getPlayer().setBuddy(null);
 			}
 			if (y > Game.HEIGHT - height || y < -20) {
 				handler.removeObject(this);
+				handler.getPlayer().setBuddy(null);
 			}
 		}
 	}
 	
+	//need to eventually combine with other collision and see if it works
 	private void collisionEnemy() {
 		Attack currAttack = attackData.get(pStatus);
 		Rectangle[] collisions = currAttack.getHitBoxes(frameTimer, this);
@@ -193,7 +193,6 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 						if ((handler.getBoss()).hittable()) {
 							if ((this instanceof Clone)) {
 								((Clone)this).die();
-								(handler.getBoss()).killedClone((Clone)this); //idk why this dont work
 							}else {
 								//reward enemy for hitting player?
 								(handler.getBoss()).reward();
@@ -243,33 +242,48 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 					if (((Enemy)tempObject).hittable()) {
 						if ((this instanceof Clone)) {
 							((Clone)this).die();
-							((Enemy)tempObject).killedClone((Clone)this); //idk why this dont work
 						}else {
 							//reward enemy for hitting player?
 							((Enemy)tempObject).reward();
-							HUD.HEALTH -= 20;
+							if (buddy == null){
+								int knockback = 6;
+								int kx = knockback;
+								int ky = knockback + 1;
+								isHit(tempObject, 20, kx, ky);
+							}else{
+								swapOneWay(this, buddy);
+								break;
+							}
 						}
-						//  v amount of hitstun. map with different times?
-						iTimer = 20;
-						setActionable(false);
-						//frameTimer = 0;
-						int knockback = 6;
-						if (x + width / 2 < tempObject.getX() + tempObject.getWidth() / 2) {
-							xv = -knockback;
-						}else {
-							xv = knockback;
-						}
-						if (y + height / 2 < tempObject.getY() + tempObject.getHeight() / 2) {
-							yv = knockback + 1;
-						}else {
-							yv= -knockback + 2;
-						}
-						setStatus(STATUS.air);
 					}
+				}
+			}else if (tempObject.getID() == ID.Player && tempObject instanceof Clone  && !(this instanceof Clone) && tempObject.getBounds().intersects(this.getBounds())){
+				if (lastStatus != STATUS.clone){
+					((Clone)tempObject).die(this);
+				}else if( ((Clone)tempObject).getJumpTimer() >= defaultJumpHeight - 2){
+					((Clone)tempObject).setJumpTimer(defaultJumpHeight + 4);
 				}
 			}
 		}
 	}
+	
+	public void isHit(GameObject other, int damage, int knockbackX, int knockbackY) {
+		HUD.HEALTH -= damage;
+		if (knockbackX != 0 && knockbackY !=0) {
+			int[] midOther = other.getMiddle();
+			int[] midThis = this.getMiddle();
+			xv = knockbackX * Game.clamp(midThis[0] - midOther[0], -1, 1);
+			yv = knockbackY * Game.clamp(midThis[1] - midOther[1], -1, 1);
+			iTimer = 20;
+			setActionable(false);
+		}
+	}
+	
+	public void isHit(GameObject other, int damage, int knockback) {
+		isHit(other, damage, knockback, knockback);
+	}
+	
+	
 	private void collisionTile3() {
 		boolean onGround = false;
 		boolean rightWall = false;
@@ -336,20 +350,6 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 						}else{
 							xv = -1;
 						}
-					}
-				}
-
-				if (anchor != null && false) { //might delete this later
-					int[] speeds = anchor.getNext();
-					if (output == Math.abs(left)) {
-						xv = Math.max(1, speeds[0]);
-					}else if(output == Math.abs(right)) {
-						xv = Math.min(-1, speeds[0]);
-					}
-					if (output == Math.abs(top)) {
-						yv = Math.max(speeds[1], yv);
-					}else if(output == Math.abs(bottom)) {
-						yv = Math.min(speeds[1], yv);
 					}
 				}
 			}else if(tempObject.getID() == ID.Chakra) {
@@ -424,21 +424,6 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 		pyv = yv;
 	}
 	
-	private boolean collisionCompare(int number, int compare1, int compare2, int compare3) {
-		int limit = 0;
-		if (number < limit) {
-			return false;
-		}
-		if (compare1 >= limit && number > compare1) {
-			return false;
-		}else if(compare2 >= limit && number > compare2) {
-			return false;
-		}else if(compare3 >= limit && number > compare3) {
-			return false;
-		}
-		return number >= -3;
-	}
-	
 	private int collisionCompare2(int number, int c1, int c2, int c3) {
 		if (c1 < 0 && c2 < 0 && c3 < 0 && number < 0) {
 			return Math.max(number, Math.max(c1, Math.max(c2, c3)));
@@ -450,171 +435,37 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 		return Math.min(number, Math.min(c1, Math.min(c2, c3)));
 	}
 	
-	//*********************************************************************************************************
-	private void collisionTile2() {
-		boolean onGround = false;
-		boolean rightWall = false;
-		boolean leftWall = false;
-		
-		LinkedList<GameObject> objectList = handler.getMasterList();
-		for (int i = 0; i < objectList.size(); i++) {
-			GameObject tempObject = objectList.get(i);
-			if (tempObject.getID() == ID.Tile || tempObject.getID() == ID.MovingTile) {
-				Rectangle otherRect =  new Rectangle(tempObject.getX(), tempObject.getY(),
-								  					 tempObject.getWidth(), tempObject.getHeight());
-				Rectangle pX = getOffsetBoundsX();
-				Rectangle pY = getOffsetBoundsY();
-				Rectangle p = getOffset();
-				//check if on exact corner
-				if (x == tempObject.getX() + tempObject.getWidth()) {
-					if (y == tempObject.getY() + tempObject.getWidth()) {
-						x++;
-					}else if(y + height == tempObject.getY()) {
-						y--;
-						x -= 2;
-					}
-				}else if(x + width == tempObject.getX()) {
-					if (y == tempObject.getY() + tempObject.getWidth()) {
-						x--;
-					}else if(y + height == tempObject.getY()) {
-						y--;
-						x += 2;
-					}
-				}
-				if (pY.intersects(otherRect)) {
-					((Tile)tempObject).touched(this);
-					//maybe something with an y cord from the last frame from player
-					if (y + yv + height >= tempObject.getY() && y + yv + height <= tempObject.getY() + tempObject.getHeight()) {
-						//GROUNDED
-						y = tempObject.getY() - height;
-						onGround = true;
-						yv = 0;
-						//key stuff
-						if (lastKeyDown == 's' && Game.keyPressed) {
-							xv = 0;
-						}
-						if(pStatus == STATUS.grounded && !Game.keyPressed && Game.gameTime % 5 == 0) {
-							xv = xv * 3 / 4;
-						}else if(pStatus == STATUS.clone && Game.gameTime % 5 == 0) {
-							xv = xv * 3 / 4;
-						}
-					}else if (y + yv >= tempObject.getY() && y + yv <= tempObject.getY() + tempObject.getHeight()){
-						//BUMP
-						y = tempObject.getY() + tempObject.getHeight();
-						yv = 0;
-						jumpTimer = 0;
-					}
-				}
-				if (pX.intersects(otherRect)) {
-					((Tile)tempObject).touched(this);
-					if (x +xv + width >= tempObject.getX() && x + xv + width <= tempObject.getX() + tempObject.getWidth()) {
-						// WALL ON RIGHT SIDE
-						x = tempObject.getX() - width;
-						rightWall = true;
-					}else if(x + xv>= tempObject.getX() && x + xv <= tempObject.getX() + tempObject.getWidth()) {
-						//WALL ON LEFT SIDE
-						x = tempObject.getX() + tempObject.getWidth();
-						leftWall = true;
-					}
-					if (tempObject instanceof Switch) {
-						if ( !(x == tempObject.getX() + tempObject.getWidth() || x + width == tempObject.getX())) {
-							if (tempObject.getMiddle()[0] < x + width / 2 ) {
-								x += 2; //arbitary distance to get closer to center of switch
-							}else {
-								x -= 2;
-							}
-						}
-						y = tempObject.getY() - height;
-						rightWall = false;
-						leftWall = false;
-					}
-				}
-			}else if(tempObject.getID() == ID.Chakra) {
-				if (collides(((Chakra)tempObject), getBounds())){
-					isHit(tempObject, -tempObject.getWidth(), 0);
-					handler.removeObject(tempObject);
-				}
-			}else if(tempObject.getID() == ID.Bomb) {
-				if (collides(((Bomb)tempObject), getBounds())){
-					if ((this instanceof Clone)) {
-						((Clone)this).die();
-					}else {
-						isHit(tempObject, 10, 6);
-					}
-					((Bomb)tempObject).explode();
-				}
-			}else if(tempObject.getID() == ID.NoCloneZone) {
-				if (this instanceof Clone) {
-					if (getOffsetBoundsX().intersects(((NoCloneZone)tempObject).getBounds())) {
-						((Clone)this).die();
-					}else if(getOffsetBoundsY().intersects(((NoCloneZone)tempObject).getBounds())){
-						((Clone)this).die();
-					}
-				}
+	//lowkey stole this and modified it but it's fine
+	//modified it a lot actually this wasn't very effective
+	private boolean collides(Chakra c1, Rectangle r1) {
+		if (c1.getX() <= x + width && c1.getX() >= x) {
+			if (c1.getY() <= y + height && c1.getY() >= y) {
+				return true;
 			}
 		}
-		if (walled(lastStatus) && !rightWall && !leftWall) {
-			if (yv >= 0) {
-				xv = 0;
-			}else {
-				if (rightWall) {
-					xv = -1;
-				}else {
-					xv = 1;
-				}
-			}
-		}
-		if (!isAttacking() || frameTimer == 0 && pStatus != STATUS.clone  || pStatus == STATUS.airNeutral && (onGround || rightWall || leftWall)) {
-			if (onGround) {
-				setStatus(STATUS.grounded);
-			}else if (rightWall) {
-				setStatus(STATUS.wallRight);
-			}else if (leftWall) {
-				setStatus(STATUS.wallLeft);
-			}else if(!onGround) {
-				setStatus(STATUS.air);
-			}
-		}
-		
-		if (pStatus == STATUS.grounded) {
-			if (lastKeyDown == 's' && Game.keyPressed) {
-				xv = 0;
-			}
-			if (!Game.keyPressed && Game.gameTime % 5 == 0) {
-				xv = xv * 3 / 4;
-			}
-		}
-		if(pStatus == STATUS.clone && Game.gameTime % 5 == 0) {
-			xv = xv * 3 / 4;
-		}
-		
-		if (pStatus != STATUS.wallRight && pStatus != STATUS.wallLeft && (faceRight && xv < 0 || !faceRight && xv > 0)) {
-			faceRight = !faceRight;
-		}
-		y += yv;
-		if (!leftWall && !rightWall) {
-			x += xv;
-		}else {
-			faceRight = leftWall; //makes them look the right way
-		}
+	    double closestX = Game.clamp(c1.getX(), (r1.x), r1.x + r1.width);
+	    double closestY = Game.clamp(c1.getY(), r1.y , r1.y + r1.height);
+	 
+	    double distanceX = c1.getX() - closestX;
+	    double distanceY = c1.getY() - closestY;
+	    
+	    return (Math.pow(distanceX, 2) + Math.pow(distanceY, 2) + 50 < Math.pow(c1.getWidth(), 2));
 	}
 	
-	public void isHit(GameObject other, int damage, int knockbackX, int knockbackY) {
-		HUD.HEALTH -= damage;
-		if (knockbackX != 0 && knockbackY !=0) {
-			int[] midOther = other.getMiddle();
-			int[] midThis = this.getMiddle();
-			xv = knockbackX * Game.clamp(midThis[0] - midOther[0], -1, 1);
-			yv = knockbackY * Game.clamp(midThis[1] - midOther[1], -1, 1);
-			iTimer = 20;
-			setActionable(false);
+	private boolean collides(Bomb b1, Rectangle r1) {
+		if (b1.getX() <= x + width && b1.getX() >= x) {
+			if (b1.getY() <= y + height && b1.getY() >= y) {
+				return true;
+			}
 		}
+	    double closestX = Game.clamp(b1.getX(), (r1.x), r1.x + r1.width);
+	    double closestY = Game.clamp(b1.getY(), r1.y , r1.y + r1.height);
+	 
+	    double distanceX = b1.getX() - closestX;
+	    double distanceY = b1.getY() - closestY;
+	    
+	    return (Math.pow(distanceX, 2) + Math.pow(distanceY, 2) + 50 < Math.pow(b1.getWidth(), 2));
 	}
-	
-	public void isHit(GameObject other, int damage, int knockback) {
-		isHit(other, damage, knockback, knockback);
-	}
-
 	
 	public void render(Graphics g) {
 		Graphics2D g2d = (Graphics2D) g;
@@ -660,6 +511,7 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 			g.setFont(new Font("Dialog", Font.ITALIC, 25));
 			g.drawString(frameTimer + "" + pStatus, 400, 30);
 			g.drawString(Game.masterMap.getLevel(), 400, 60);
+			g.drawString("Clone active: " + String.valueOf(buddy != null), 400, 90);
 		}else {
 			g.setColor(new Color(Game.gameTime % 255, Game.gameTime % 255, Game.gameTime % 255));
 			g.fillRect(x + width / 4, y, width / 2, height / 4);
@@ -675,26 +527,6 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 			action(key);
 		}else {
 			stopClone(key);
-		}
-	}
-	
-	public void stopClone(char key) {
-		if (pStatus == STATUS.clone && (key == 'k' || key == 'K') && iTimer <= 0) {
-			setStatus(STATUS.grounded);
-			if (lastTimePressed + keyBuffer * 3 > Game.gameTime) {
-				 handler.recallClones();
-			 }
-			for (int i = 0; i < handler.getMasterList().size(); i++) {
-				GameObject thing = handler.getMasterList().get(i);
-				if (thing instanceof Clone) {
-					Clone temp = (Clone)thing;
-					if (temp.getBounds().intersects(this.getBounds())) {
-						//maybe change it so this is the purpose of crouch
-						temp.die(this);
-						i--;
-					}
-				}
-			}
 		}
 	}
 	
@@ -722,7 +554,7 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 			if (pStatus == STATUS.wallRight) {
 				yv = 0;
 			}else if (pStatus == STATUS.wallLeft) {
-					jump(25);
+					jump(defaultJumpHeight);
 					xv = speed + 1;
 			}
 		}else if (key == 's' || key == 'S') { //for the S button
@@ -757,7 +589,7 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 			if (pStatus == STATUS.wallLeft) {
 				yv = 0;
 			}else if (pStatus == STATUS.wallRight) {
-					jump(25);
+					jump(defaultJumpHeight);
 					xv = -speed - 1;
 			}
 		}else if (key == 'w' || key == 'W') {
@@ -787,19 +619,10 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 				frameTimer = attackData.get(pStatus).getTimer();
 			}
 		}else if (key == 'k' || key == 'K' ) {
-			 if (pStatus != STATUS.clone) {
-				if (!(this instanceof Clone)) {
-					setActionable(false);
-					if (HUD.HEALTH > 0) {
-						handler.addObject(new Clone(this, handler, xv, yv, faceRight));
-						HUD.HEALTH -= 10;
-					}
-					if (pStatus == STATUS.grounded) {
-						xv = 0;
-					}
-					setStatus(STATUS.clone);
-					iTimer = 30;
-				}
+			startClone();
+		}else if(key == ' '){
+			if (buddy != null){
+				swap(this, buddy);
 			}
 		}
 		//last default updates
@@ -827,11 +650,71 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 		jumpTimer = power;
 	}
 	
+	private void startClone() throws FileNotFoundException{
+		if ( !(this instanceof Clone) && pStatus != STATUS.clone){
+			if (HUD.HEALTH > 0 && buddy == null) {
+				buddy = new Clone(this, handler, xv, yv, faceRight);
+				handler.addObject(buddy);
+				HUD.HEALTH -= 10;
+			}
+			if (pStatus == STATUS.grounded) {
+				xv = 0;
+			}
+			//setActionable(false); //probably don't need this
+			setStatus(STATUS.clone);
+			//iTimer = 30; //don't reallt need this either
+		}
+	}
+	
+	public void stopClone(char key) {
+		if (pStatus == STATUS.clone){
+			if ((key == 'k' || key == 'K') && iTimer <= 0) {
+				setStatus(STATUS.grounded);
+			}else if(key == ' '){
+				try {
+					if (buddy != null){
+						swap(this, buddy);
+					}
+				} catch (FileNotFoundException e) {
+					System.out.println("Fucky wucky in stopClone");
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+	
+	private void swap(Playerv2 dude, Clone buddy) throws FileNotFoundException{
+		int txv = buddy.getXV();
+		int tyv = buddy.getYV();
+		Clone temp = new Clone(buddy, handler, buddy.getXV(), buddy.getYV(), buddy.isFacingRight());
+		buddy.swapWith(this);
+		this.setX(temp.getX());
+		this.setY(temp.getY());
+		this.setXV(txv);
+		this.setYV(tyv);
+		this.setStatusOverride(temp.getStatus());
+		this.faceRight = temp.isFacingRight();
+	}
+	
+	private void swapOneWay(Playerv2 dude, Clone buddy){
+		int tpx = dude.getX();
+		int tpy = dude.getY();
+		this.setX(buddy.getX());
+		this.setY(buddy.getY());
+		this.setXV(buddy.getXV());
+		this.setYV(buddy.getYV());
+		this.setStatusOverride(buddy.getStatus());
+		this.faceRight = buddy.isFacingRight();
+		buddy.setX(tpx);
+		buddy.setY(tpy);
+		buddy.die();
+	}
+	
 	private void jump() {
 		jump(timer);
 	}
 	
-	//getters and setters
+	//getters and setters*******************************************************************************************************************************************************************
 	public boolean isFacingRight() {
 		return this.faceRight;
 	}
@@ -866,100 +749,49 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
 	public void setActionable(boolean state) {
 		actionable = state;
 	}
+	public void setClone(Clone h){
+		buddy = h;
+	}
+	public boolean hasClone(){
+		return buddy != null;
+	}
 	public int getiTimer() {
 		return iTimer;
 	}
 	private boolean walled(STATUS p) {
 		return p == STATUS.wallLeft || p == STATUS.wallRight;
 	}
+	public Rectangle getBounds() {
+		return new Rectangle(x, y, width, height);
+	}
+	
+	public Rectangle getOffsetBoundsY() {
+		return new Rectangle(x, y + yv , width, height);
+	}
+	
+	public Rectangle getOffsetBoundsX() {
+		return new Rectangle(x + xv, y, width, height);
+	}
+	
+	public Rectangle getOffset() {
+		return new Rectangle(x + xv, y + yv, width, height);
+	}
 	//add other status later
 	public boolean isAttacking() {
 		//need a set of all status
-		if (pStatus == STATUS.forwardAttack || pStatus ==STATUS.downAttack || pStatus == STATUS.airNeutral || pStatus == STATUS.dashAttack) {
+		if (pStatus == STATUS.forwardAttack || pStatus ==STATUS.downAttack || pStatus == STATUS.airNeutral || pStatus == STATUS.dashAttack || pStatus == STATUS.clone) {
 			return true;
-		}else {
-			//think about this
-			return pStatus == STATUS.clone; //originally compared it to stauts.clone idk why
 		}
+		return false;
+	}
+	public Clone getBuddy(){
+		return buddy;
+	}
+	public void setBuddy(Clone c){
+		buddy = c;
 	}
 	
-	
-	//lowkey stole this and modified it but it's fine
-	//modified it a lot actually this wasn't very effective
-	private boolean collides(Chakra c1, Rectangle r1) {
-		if (c1.getX() <= x + width && c1.getX() >= x) {
-			if (c1.getY() <= y + height && c1.getY() >= y) {
-				return true;
-			}
-		}
-	    double closestX = Game.clamp(c1.getX(), (r1.x), r1.x + r1.width);
-	    double closestY = Game.clamp(c1.getY(), r1.y , r1.y + r1.height);
-	 
-	    double distanceX = c1.getX() - closestX;
-	    double distanceY = c1.getY() - closestY;
-	    
-	    return (Math.pow(distanceX, 2) + Math.pow(distanceY, 2) + 50 < Math.pow(c1.getWidth(), 2));
-	}
-	
-	private boolean collides(Bomb b1, Rectangle r1) {
-		if (b1.getX() <= x + width && b1.getX() >= x) {
-			if (b1.getY() <= y + height && b1.getY() >= y) {
-				return true;
-			}
-		}
-	    double closestX = Game.clamp(b1.getX(), (r1.x), r1.x + r1.width);
-	    double closestY = Game.clamp(b1.getY(), r1.y , r1.y + r1.height);
-	 
-	    double distanceX = b1.getX() - closestX;
-	    double distanceY = b1.getY() - closestY;
-	    
-	    return (Math.pow(distanceX, 2) + Math.pow(distanceY, 2) + 50 < Math.pow(b1.getWidth(), 2));
-	}
-	
-	/* remove later, pretty sure this isn't good. change the file names though
-	private Map<STATUS, Attack> setupAttacks() throws FileNotFoundException{
-		Scanner scan = new Scanner(new File(attackFile));
-		//each attack is scanned as follows
-		//name (if there), duration, effect, damage, x, y, width, height
-		ArrayList<HitBox> frameBoxes = new ArrayList<>(); //all hit boxes in given frame
-		ArrayList<HitBox[]> allBoxes = new ArrayList<>(); //all hit boxes in given move
-		Map<STATUS, Attack> moves = new HashMap<>(); //all moves
-		String currname = "none";
-		while(scan.hasNextLine()) {
-			String attackText = scan.nextLine();
-			Scanner ins = new Scanner(attackText);
-			if(ins.hasNext() && !ins.hasNextInt()) {
-				if (allBoxes.size() != 0) {
-					HitBox[][] wholeMove = new HitBox[frameBoxes.size()][];
-					Attack curratk = new Attack(allBoxes.toArray(wholeMove), this);
-					moves.put(STATUS.valueOf(currname), curratk);
-					System.out.println(currname + " " + curratk);
-					frameBoxes = new ArrayList<>();
-					allBoxes = new ArrayList<>();
-				}
-				currname = ins.next(); //takes name, duration, other info about hit
-			}
-			int duration = ins.nextInt();
-			if (ins.hasNext()) {
-				frameBoxes.add(new HitBox(ins.next(), ins.nextInt(),
-					ins.nextInt(), ins.nextInt(), ins.nextInt(), ins.nextInt()));
-			}
-			//add future effects and parameters above^
-			HitBox[] listBoxes = new HitBox[frameBoxes.size()];
-			listBoxes = frameBoxes.toArray(listBoxes);
-			while (duration > 0) {
-				allBoxes.add(listBoxes);
-				duration--;
-			}
-			ins.close();
-		}
-		HitBox[][] wholeMove = new HitBox[frameBoxes.size()][];
-		Attack curratk = new Attack(allBoxes.toArray(wholeMove), this);
-		moves.put(STATUS.valueOf(currname), curratk);
-		scan.close();
-		return moves;
-	}*/
-	
+	// one time use************************************************************************************************************************************************************************************
 	private Map<STATUS, Attack> setupAttacks2() throws FileNotFoundException{
 		Scanner scan = new Scanner(new File("trial1.txt"));
 		//each attack is scanned as follows
@@ -1027,4 +859,6 @@ public class Playerv2 extends GameObject implements Comparable<GameObject>{
  * As of 2/26/2020 player 15 by 30 frame will be permanent and hard coding around it
  * will be expected.
  * Probably should have a double jump or some other way to gain height
+ * 
+ * As of 11/21/2020 switched to having only one clone, last git push was prior to this change
  */

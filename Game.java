@@ -1,4 +1,4 @@
-//version 1.9.1
+//version 1.9.3
 
 /*
  * to-do~
@@ -33,7 +33,7 @@ public class Game extends Source{
 	public static Random rand = new Random();
 	private static final String[] textures = { "patsdino.txt", "brain_pat.txt", "goo.txt", "platform_grey.txt", "robot.txt", "block.txt", "ocean_spiral.txt"}, 
 			levels = {"levelremake", "weird floor and wall.txt", "airship.txt", "skyfield2", "level3.txt","basement.txt","treasure.txt","junglegym.txt"};
-	public final static boolean debugMode = true;
+	public final static boolean debugMode = false;
 	public final static String gameTitle = "sample"; //lol
 	public static final int roomStartX = 2, roomStartY = 2;
 	
@@ -63,8 +63,9 @@ public class Game extends Source{
 	
 	private void intializePriorityList() {
 		priorityList = new HashMap<ID, Integer>();
-		ID[] hierachy = {ID.CutObject, ID.Particle, ID.Chakra, ID.Player, ID.Bee, ID.Queen,
-						 ID.Queen, ID.Enemy, ID.Bomb, ID.NoCloneZone, ID.MovingTile, ID.Tile};
+		//ID[] hierachy = {ID.CutObject, ID.Particle, ID.Chakra, ID.Player, ID.Bee,
+		//				 ID.Queen, ID.Enemy, ID.Bomb, ID.NoCloneZone, ID.MovingTile, ID.Tile};
+		ID[] hierachy = {ID.Tile, ID.MovingTile, ID.NoCloneZone, ID.Bomb, ID.Enemy, ID.Queen, ID.Bee, ID.Player, ID.Chakra, ID.Particle, ID.CutObject};
 		for (int i = 0; i < hierachy.length; i++) {
 			priorityList.put(hierachy[i], i);
 		}

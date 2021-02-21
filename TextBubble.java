@@ -23,7 +23,7 @@ public class TextBubble extends GameObject implements Comparable<GameObject>{
 		}
 		this.timer = timer;
 		this.toPrint = text;
-		this.lineLength = (width/13 - 1);
+		this.lineLength = (width/15);
 		this.index = 0;
 		this.displayedWords = new String[(height-10)/30];
 		for(int j = 0; j < displayedWords.length; j++) {

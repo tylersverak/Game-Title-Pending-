@@ -93,8 +93,11 @@ public class Handler {
 	
 	public void recallClones() {
 		for (int i = 0; i < objectList.size(); i++) {
-			if (objectList.get(i) instanceof Clone) {
+			GameObject temp = objectList.get(i);
+			if (temp instanceof Clone) {
 				((Clone)objectList.get(i)).die();
+			}else if(temp.getID() == ID.Player){
+				((Playerv2)temp).setBuddy(null);
 			}
 		}
 	}
